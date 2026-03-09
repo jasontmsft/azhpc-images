@@ -73,7 +73,9 @@ systemctl enable dynolog.service
 git clone --recurse-submodules -j8 $DRL_URL /tmp/dyno-relay-logger
 pushd /tmp/dyno-relay-logger
 mkdir build && cd build
-cmake .. -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake .. -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release
+export OPENSSL_LIB_DIR=`echo /usr/lib/*-linux-gnu`
+export OPENSSL_INCLUDE_DIR=/usr/include/openssl
 cmake --build . -j$(nproc)
 cp dynorelaylogger dynorelayloggerinfo $DYNOLOG_INSTALL_DIR
 popd

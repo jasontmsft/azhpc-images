@@ -104,6 +104,9 @@ $COMPONENT_DIR/install_hpcdiag.sh
 # install monitor tools
 $COMPONENT_DIR/install_monitoring_tools.sh
 
+# install dynolog and dyno-relay-logger
+$COMPONENT_DIR/install_dynolog_drl.sh
+
 # install persistent rdma naming
 $COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
 

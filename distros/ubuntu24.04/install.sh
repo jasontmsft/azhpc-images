@@ -116,6 +116,9 @@ if [[ "$SKU" != "GB200" ]]; then
     # install monitor tools
     $COMPONENT_DIR/install_monitoring_tools.sh
 
+    # install dynolog and dyno-relay-logger
+    $COMPONENT_DIR/install_dynolog_drl.sh
+
     # install Azure/NHC Health Checks
     $COMPONENT_DIR/install_health_checks.sh "$GPU"
 fi 

@@ -6,47 +6,43 @@
 set -ex
 source ${UTILS_DIR}/utilities.sh
 
-DYNOLOG_INSTALL_DIR=/opt/dynolog/bin
-mkdir -p $DYNOLOG_INSTALL_DIR
+if [[ "$GPU" == "NVIDIA" ]]; then
 
-dynolog_metadata=$(get_component_config "dynolog")
-DYNOLOG_VERSION=$(jq -r '.version' <<< $dynolog_metadata)
-DYNOLOG_URL=$(jq -r '.url' <<< $dynolog_metadata)
+    DYNOLOG_INSTALL_DIR=/opt/dynolog/bin
+    mkdir -p $DYNOLOG_INSTALL_DIR
 
-drl_metadata=$(get_component_config "dyno_relay_logger")
-DRL_VERSION=$(jq -r '.version' <<< $drl_metadata)
-DRL_URL=$(jq -r '.url' <<< $drl_metadata)
+    dynolog_metadata=$(get_component_config "dynolog")
+    DYNOLOG_VERSION=$(jq -r '.version' <<< $dynolog_metadata)
+    DYNOLOG_URL=$(jq -r '.url' <<< $dynolog_metadata)
 
-##############################################################################
-# Install build dependencies
-##############################################################################
-if [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    tdnf install -y cmake cargo ninja-build build-essential
-    source $HOME/.cargo/env
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-    apt install -y cmake cargo ninja-build build-essential 
-    apt install -y g++ pkg-config uuid-dev libssl-dev
-    source $HOME/.cargo/env
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-elif [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == rocky* ]]; then
-    yum install -y cmake cargo ninja-build
-    source $HOME/.cargo/env
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-fi
+    drl_metadata=$(get_component_config "dyno_relay_logger")
+    DRL_VERSION=$(jq -r '.version' <<< $drl_metadata)
+    DRL_URL=$(jq -r '.url' <<< $drl_metadata)
 
-##############################################################################
-# Build and install dynolog
-##############################################################################
-git clone --recurse-submodules -j8 $DYNOLOG_URL /tmp/dynolog
-pushd /tmp/dynolog
-./scripts/build.sh -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-cp build/dynolog/src/dynolog $DYNOLOG_INSTALL_DIR
-cp build/release/dyno $DYNOLOG_INSTALL_DIR
-popd
-rm -rf /tmp/dynolog
+    ##########################################################################
+    # Install build dependencies
+    ##########################################################################
+    if [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
+        tdnf install -y cmake cargo ninja-build build-essential rust
+    elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
+        apt install -y cmake cargo ninja-build build-essential rustc
+        apt install -y g++ pkg-config uuid-dev libssl-dev
+    elif [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == rocky* ]]; then
+        yum install -y cmake cargo ninja-build rust-toolset
+    fi
 
-cat <<-EOF > /etc/systemd/system/dynolog.service
+    ##########################################################################
+    # Build and install dynolog
+    ##########################################################################
+    git clone --recurse-submodules -j8 $DYNOLOG_URL /tmp/dynolog
+    pushd /tmp/dynolog
+    ./scripts/build.sh -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    mv build/dynolog/src/dynolog $DYNOLOG_INSTALL_DIR
+    mv build/release/dyno $DYNOLOG_INSTALL_DIR
+    popd
+    rm -rf /tmp/dynolog
+
+    cat <<-EOF > /etc/systemd/system/dynolog.service
 [Unit]
 Description=dynolog
 After=nvidia-dcgm.service
@@ -64,24 +60,23 @@ WorkingDirectory=/tmp
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
-systemctl enable dynolog.service
+    systemctl daemon-reload
+    systemctl enable dynolog.service
 
-##############################################################################
-# Build and install dyno-relay-logger
-##############################################################################
-git clone --recurse-submodules -j8 $DRL_URL /tmp/dyno-relay-logger
-pushd /tmp/dyno-relay-logger
-mkdir build && cd build
-cmake .. -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release
-export OPENSSL_LIB_DIR=`echo /usr/lib/*-linux-gnu`
-export OPENSSL_INCLUDE_DIR=/usr/include/openssl
-cmake --build . -j$(nproc)
-cp dynorelaylogger dynorelayloggerinfo $DYNOLOG_INSTALL_DIR
-popd
-rm -rf /tmp/dyno-relay-logger
+    ##########################################################################
+    # Build and install dyno-relay-logger
+    ##########################################################################
+    git clone --recurse-submodules -j8 $DRL_URL /tmp/dyno-relay-logger
+    pushd /tmp/dyno-relay-logger
+    mkdir build && cd build
+    cmake .. -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release
+    cmake --build . -j$(nproc)
+    mv dynorelaylogger $DYNOLOG_INSTALL_DIR
+    mv dynorelayloggerinfo $DYNOLOG_INSTALL_DIR
+    popd
+    rm -rf /tmp/dyno-relay-logger
 
-cat <<-EOF > /etc/systemd/system/dyno-relay-logger.service
+    cat <<-EOF > /etc/systemd/system/dyno-relay-logger.service
 [Unit]
 Description=dyno-relay-logger
 After=nvidia-dcgm.service
@@ -99,8 +94,10 @@ WorkingDirectory=/tmp
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
-systemctl enable dyno-relay-logger.service
+    systemctl daemon-reload
+    systemctl enable dyno-relay-logger.service
 
-write_component_version "dynolog" ${DYNOLOG_VERSION}
-write_component_version "dyno_relay_logger" ${DRL_VERSION}
+    write_component_version "dynolog" ${DYNOLOG_VERSION}
+    write_component_version "dyno_relay_logger" ${DRL_VERSION}
+
+fi

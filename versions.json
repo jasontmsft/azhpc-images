@@ -978,13 +978,13 @@
   },
   "dynolog": {
     "common": {
-      "version": "main",
+      "version": "1.0.0",
       "url": "https://github.com/jasontmsft/dynolog.git"
     }
   },
   "dyno_relay_logger": {
     "common": {
-      "version": "main",
+      "version": "1.0.0",
       "url": "https://github.com/jasontmsft/dyno-relay-logger.git"
     }
   }

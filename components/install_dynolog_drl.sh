@@ -2,6 +2,9 @@
 ##############################################################################
 # Build and install dynolog and dyno-relay-logger
 ##############################################################################
+# TODO: Move dynolog and dyno-relay-logger from https://github.com/jasontmsft
+#   to a Microsoft repository and pull from there instead. 
+##############################################################################
 
 set -ex
 source ${UTILS_DIR}/utilities.sh
